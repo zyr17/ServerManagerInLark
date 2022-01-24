@@ -3,54 +3,13 @@ import time
 import logging
 import base64
 import secrets
-
-
-def is_valid_pk(pk):
-    """
-    check if a public key is valid
-    """
-    pk = pk.split(' ')
-    if len(pk) < 2:
-        return False
-    try:
-        data = base64.b64decode(pk[1])
-        for i in range(3):
-            j = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3]
-            data = data[4:]
-            if len(data) < j:
-                return False
-            part = data[:j]
-            data = data[j:]
-            if i == 0:
-                # content should same as pk[0]
-                if pk[0] != part.decode():
-                    return False
-        if len(data):
-            return False
-    except Exception as e:
-        raise e
-        return False
-    return True
-
-
-def generate_password(length = 12):
-    """
-    generate a password with specified length.
-    """
-    LOWER = 'abcdefghijklmnopqrstuvwxyz'
-    UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    NUMBER = '0123456789'
-    OTHER = '!@#$%^&*()+-=~[]{}<>'
-    CHARS = [LOWER, UPPER, NUMBER, OTHER]
-    secret_generator=secrets.SystemRandom()
-    assert length >= 4, 'generated password length is at least 4'
-    passwd = ''
-    for i in CHARS:
-        passwd += i[secret_generator.randint(1, len(i)) - 1]
-    CHARS = ''.join(CHARS)
-    while len(passwd) < length:
-        passwd += CHARS[secret_generator.randint(1, len(CHARS)) - 1]
-    return passwd
+from utils import (
+    is_valid_pk, 
+    duplicate_pk, 
+    is_valid_account_name, 
+    generate_password
+)
+from ssh import change_all_password, change_all_auth_keys
 
 
 class RedisConnect:
@@ -114,8 +73,20 @@ class RedisConnect:
                     f'try to bind account_name({account_name}) of '
                     f'user_id({user_id}) but already binded to ({current})!'
                 )
+            if not is_valid_account_name(account_name):
+                return None, f'account name({account_name}) not in valid list'
+            binded = self.conn.get(self._account_key(account_name))
+            if binded is not None:
+                return None, (
+                    f'account name({account_name}) has binded to '
+                    f'another account({binded})'
+                )
             self.conn.set(user_id, account_name)
+            self.conn.set(self._account_key(account_name), user_id)
             return account_name, None
+
+    def _account_key(self, account_name):
+        return self.an_prefix + account_name
 
     def _account_pk_key(self, account_name):
         return self.an_prefix + account_name + '_pk'
@@ -152,26 +123,39 @@ class RedisConnect:
         if pk is None:
             if current is None:
                 return None, 'empty public key'
+            ret = self._update_account_pk(account_name)
+            if ret is not None:
+                return None, ret
             return current.split(':'), None
         if ':' in pk:
             return None, "public key should not contain `:'"
         if not is_valid_pk(pk):
             return None, 'public key is not valid'
+        if duplicate_pk(current, pk):
+            return None, 'duplicate public key'
         if current is None:
             current = ''
         if len(current) != 0:
             pk = current + ':' + pk
         self.conn.set(key, pk)
-        self.update_account_pk(account_name)
+        ret = self._update_account_pk(account_name)
+        if ret is not None:
+            return None, ret
         return pk.split(':'), None
 
-    def update_account_pk(self, account_name):
+    def _update_account_pk(self, account_name):
         """
         update public keys of account
         """
         key = self._account_pk_key(account_name)
-        # TODO 
         logging.warning(f'try to update public keys of {account_name}')
+        pk = self.conn.get(key).split(':')
+        ret = change_all_auth_keys(account_name, pk)
+        if ret is not None:
+            return (
+                f'try to update public key, but some server '
+                f'update failed. detail: {ret}' 
+            )
 
     def user_id_to_password(self, user_id, password = None):
         """
@@ -199,15 +183,22 @@ class RedisConnect:
             return None, 'unable to set password, can only get random password'
         new_passwd = generate_password()
         # self.conn.set(key, new_passwd)  # currently no need to save in db
-        self._update_account_passwd(account_name, new_passwd)
+        ret = self._update_account_passwd(account_name, new_passwd)
+        if ret is not None:
+            return None, ret
         return new_passwd, None
 
     def _update_account_passwd(self, account_name, passwd):
         """
         update password of an account.
         """
-        # TODO
         logging.warning(f'try to update password of {account_name}')
+        ret = change_all_password(account_name, passwd)
+        if ret is not None:
+            return (
+                f'try to set password {passwd}, but some server '
+                f'set failed. detail: {ret}' 
+            )
     
     def clear_user_data(self, user_id):
         """
@@ -219,10 +210,12 @@ class RedisConnect:
         rmkeys = [user_id]
         account_name, _ = self.user_id_to_account_name(user_id)
         if account_name is not None:
+            rmkeys.append(self._account_key(account_name))
             rmkeys.append(self._account_pk_key(account_name))
             rmkeys.append(self._account_passwd_key(account_name))
         else:
             rmkeys = []
+            return None, f'user data of user id({user_id}) not found'
         if len(rmkeys):
             self.conn.delete(*rmkeys)
         return rmkeys, None
@@ -232,6 +225,7 @@ class RedisConnect:
         get all keys
         """
         res = self.conn.keys()
+        res.sort()
         return res, None
 
     def get_set_db(self, key, value = None):
@@ -241,7 +235,7 @@ class RedisConnect:
         if value is None:
             res = self.conn.get(key)
             if res is None:
-                return None, 'Key {key} not exist'
+                return None, f'Key {key} not exist'
             return res, None
         if value is None:
             self.conn.delete(key)
@@ -257,4 +251,5 @@ class RedisConnect:
         keys = self.conn.keys('om_*')
         if len(keys):
             self.conn.delete(*keys)
+        keys.sort()
         return keys, None

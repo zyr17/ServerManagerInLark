@@ -4,7 +4,7 @@ import os
 import logging
 import requests
 from db import RedisConnect
-from commandparser import CommandParser
+from command import CommandParser
 from api import MessageApiClient
 from event import MessageReceiveEvent, UrlVerificationEvent, EventManager
 from flask import Flask, jsonify

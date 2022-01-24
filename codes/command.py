@@ -1,4 +1,5 @@
 import json
+import inspect
 import logging
 from event import MessageReceiveEvent
 from flask import jsonify
@@ -212,6 +213,35 @@ class AddNewPublicKey(Command):
             )
 
 
+class CheckAndUpdatePublicKey(Command):
+    """
+    check existing public key and update to server for account
+    """
+    @staticmethod
+    def command_name():
+        return "CheckAndUpdatePublicKey"
+
+    def run(self, 
+            cmd_data: str, 
+            req_data: MessageReceiveEvent, 
+            cb_kwargs: dict):
+        if self._private_chat_command_notify(req_data, cb_kwargs):
+            return
+        user_id = self._get_user_id(req_data)
+        res, err_msg = self.db.user_id_to_pk(user_id)
+        if res is None:
+            self._reply_text_msg(f'Error occured: {err_msg}', cb_kwargs)
+        else:
+            self._reply_text_msg(
+                'Update public key success!\n'
+                'Current available public keys:'
+                 + '\n-----\n'.join([''] + res + [''])
+                 + 'Delete/modify is not supported now, please wait for newer '
+                'version or contact admin.',
+                cb_kwargs
+            )
+
+
 class ClearUserData(Command):
     """
     add new public key for account
@@ -378,17 +408,16 @@ class CommandParser(Command):
         """
         super().__init__(*argv, **kwargs)
         # all command classes. for new command, add class here.
-        self._cmd_classes = [
-            BindAccount, 
-            CheckAccount,
-            GenerateNewPassword,
-            AddNewPublicKey,
-            ClearUserData,
-            GetAllKeys,
-            GetKeyValue,
-            SetKeyValue,
-            ClearMessageID,
-        ]
+        self._cmd_classes = []
+        for i in globals():
+            i = globals()[i]
+            if (
+                inspect.isclass(i)
+                and issubclass(i, Command) 
+                and i != Command 
+                and i != CommandParser
+            ):
+                self._cmd_classes.append(i)
         # save all commands. key is command name, value is commad func.
         self.commands = {}
         for i in self._cmd_classes:

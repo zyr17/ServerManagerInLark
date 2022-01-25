@@ -19,12 +19,12 @@ expiration, `chage -M 1 account`.
 ## Environments
 
 - `codes/.env` contains environments about lark communication and others. 
-  - APP\_ID
-  - APP\_SECRET
-  - VERIFICATION\_TOKEN
-  - ENCRYPT\_KEY
-  - LARK\_HOST  above all is used to communicate with lark.
-  - AUTH\_KEY\_TAG used to add after SSH keys to recognize whether an SSH key 
+  - `APP_ID`
+  - `APP_SECRET`
+  - `VERIFICATION_TOKEN`
+  - `ENCRYPT_KEY`
+  - `LARK_HOST`  above all is used to communicate with lark.
+  - `AUTH_KEY_TAG` used to add after SSH keys to recognize whether an SSH key 
     is added by this program.
 - `codes/ENV/available_accounts` one line an account name that can be binded.
 - `codes/ENV/available_servers` one line an server name. Note master server

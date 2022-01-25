@@ -45,7 +45,7 @@ class Command:
                                      cb_kwargs: dict):
         """
         For commands that should only be used in private chat, 
-        make notification.
+        make notification. TODO: decorator?
 
         return: if not in private, return true; else return false
         """
@@ -366,6 +366,39 @@ class SetKeyValue(Command):
         else:
             self._reply_text_msg(
                 f'Set success! {cmd_data[0]}: {res}',
+                cb_kwargs
+            )
+
+
+class DeleteKey(Command):
+    """
+    delete certain key
+    """
+    @staticmethod
+    def command_name():
+        return "DeleteKey"
+
+    def run(self, 
+            cmd_data: str, 
+            req_data: MessageReceiveEvent, 
+            cb_kwargs: dict):
+        if self._private_chat_command_notify(req_data, cb_kwargs):
+            return
+        if len(cmd_data) != 1:
+            self._reply_text_msg(
+                'Command "DeleteKey" should take key as input', 
+                cb_kwargs
+            )
+            return
+        user_id = self._get_user_id(req_data)
+        if self._not_admin_notify(user_id, cb_kwargs):
+            return
+        res, err_msg = self.db.delete_db(cmd_data[0])
+        if res is None:
+            self._reply_text_msg(f'Error occured: {err_msg}', cb_kwargs)
+        else:
+            self._reply_text_msg(
+                f'Delete success! {cmd_data[0]}',
                 cb_kwargs
             )
 

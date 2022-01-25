@@ -244,6 +244,16 @@ class RedisConnect:
             self.conn.set(key, value)
             return value, None
 
+    def delete_db(self, key):
+        """
+        delete key in db
+        """
+        res = self.conn.get(key)
+        if res is None:
+            return None, f'Key {key} not exist'
+        self.conn.delete(key)
+        return key, None
+
     def clear_message_id(self):
         """
         clear message_id in db

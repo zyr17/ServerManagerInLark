@@ -52,7 +52,7 @@ class Command:
         if not self._is_p2p(req_data):
             self._reply_text_msg(
                 'Please private chat me with this command.',
-                cn_kwargs
+                cb_kwargs
             )
             return True
         return False
@@ -422,6 +422,7 @@ class CommandParser(Command):
         self.commands = {}
         for i in self._cmd_classes:
             self.commands[i.command_name().lower()] = i(*argv, **kwargs)
+        logging.warn(f'exist commands: {list(self.commands.keys())}')
 
     def run(self, 
             cmd_data: str, 

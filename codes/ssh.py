@@ -91,7 +91,7 @@ def change_auth_keys(server, user, auth_keys):
         return {'stdout': out, 'stderr': err}
     current_keys = [x for x in out.strip().split('\n') if auth_tag not in x]
     for key in auth_keys:
-        current_keys.append(f'{key}_{auth_tag}')
+        current_keys.append(f'{key} {auth_tag}')
     retcode, out, err = set_auth_keys(server, user, ':'.join(current_keys))
     if retcode != 0:
         return {'stdout': out, 'stderr': err}

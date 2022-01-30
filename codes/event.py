@@ -60,10 +60,26 @@ class UrlVerificationEvent(Event):
         return "url_verification"
 
 
+class AlertManagerEvent(Event):
+    
+    # handle AlertManager
+    def __init__(self, dict_data):
+        self.event = dict_2_obj(dict_data)
+        self.dict = dict_data
+
+    @staticmethod
+    def event_type():
+        return "alert_manager"
+
+
 class EventManager(object):
     event_callback_map = dict()
     event_type_map = dict()
-    _event_list = [MessageReceiveEvent, UrlVerificationEvent]
+    _event_list = [
+        MessageReceiveEvent, 
+        UrlVerificationEvent, 
+        AlertManagerEvent
+    ]
 
     def __init__(self):
         for event in EventManager._event_list:
@@ -83,6 +99,11 @@ class EventManager(object):
     @staticmethod
     def get_handler_with_event(token, encrypt_key):
         dict_data = json.loads(request.data)
+        if EventManager._from_alertmanager(dict_data):
+            # return AlterManager, data
+            event_type = "alert_manager"
+            event = EventManager.event_type_map.get(event_type)(dict_data)
+            return EventManager.event_callback_map.get(event_type), event
         dict_data = EventManager._decrypt_data(encrypt_key, dict_data)
         callback_type = dict_data.get("type")
         # only verification data has callback_type, else is event
@@ -101,6 +122,14 @@ class EventManager(object):
         event = EventManager.event_type_map.get(event_type)(dict_data, token, encrypt_key)
         # get handler
         return EventManager.event_callback_map.get(event_type), event
+
+    @staticmethod
+    def _from_alertmanager(data):
+        exist_keys = ['version', 'status', 'receiver', 'externalURL', 'alerts']
+        for key in exist_keys:
+            if key not in data:
+                return False
+        return True
 
     @staticmethod
     def _decrypt_data(encrypt_key, data):

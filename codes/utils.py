@@ -4,6 +4,7 @@
 import base64
 import logging
 import secrets
+import json
 
 
 class Obj(dict):
@@ -73,8 +74,8 @@ def generate_password(length = 12):
     """
     LOWER = 'abcdefghjkmnopqrstuvwxyz'
     UPPER = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
-    NUMBER = '23456789'
-    OTHER = '~!@#$%^&*_+-='
+    NUMBER = '234567892345678923456789'
+    OTHER = '@%_+-=@%_+-=@%_+-=@%_+-='
     CHARS = [LOWER, UPPER, NUMBER, OTHER]
     secret_generator=secrets.SystemRandom()
     assert length >= 4, 'generated password length is at least 4'
@@ -87,3 +88,54 @@ def generate_password(length = 12):
     return passwd
 
 
+def parse_alertmanager_value_string(vs):
+    """
+    parse value string, return a list with important info dict.
+    """
+    use_key = ['hostname', 'mountpoint', 'index']
+    vs = vs.strip()
+    if vs[0] != '[':
+        # unknown format, skip
+        return [{'raw': vs}]
+    vs = vs.split('[')[1:]
+    res = []
+    for onevs in vs:
+        raw_onevs = '[' + onevs
+        onevs = [x.strip() for x in onevs.split("'")]
+        if 'metric' not in onevs[0] or onevs[1][0] != '{' or onevs[1][-1] != '}':
+            # unknown format, skip
+            res.append({'raw': raw_onevs})
+            continue
+        try:
+            onevs = onevs[1][1:-1].split(', ')
+            onevs = [x.split('=') for x in onevs]
+            ores = {}
+            for k, v in onevs:
+                if k in use_key:
+                    ores[k] = v[1:-1]
+            res.append(ores)
+        except Exception as e:
+            # json parse error
+            raise e
+            res.append({'raw': "'".join(onevs)})
+    return res
+
+
+def generate_alert_card(status, title, detail, rule_id, fingerprint):
+    template = '{ "config": { "wide_screen_mode": true }, "elements": [ { "tag": "div", "text": { "content": "DETAIL", "tag": "plain_text" } } ], "header": { "template": "COLOR", "title": { "content": "STATUS: TITLE", "tag": "plain_text" } } }'
+    template = json.loads(template)
+    kwargs = {}
+    if status == 'firing':
+        template['header']['template'] = 'red' 
+    elif status == 'resolved':
+        template['header']['template'] = 'green' 
+    else:
+        template['header']['template'] = 'blue'
+    template['header']['title']['content'] = f'{status.upper()}: {title}'
+    template['elements'][0]['text']['content'] = (
+        '\n'.join([str(x) for x in detail])
+        + '\n' + '-' * 10
+        + f'\nalert rule id: {rule_id}'
+        + f'\nfingerprint: {fingerprint}'
+    )
+    return json.dumps(template)

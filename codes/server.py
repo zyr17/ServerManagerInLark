@@ -3,12 +3,19 @@
 import os
 import logging
 import requests
+import json
 from db import RedisConnect
 from command import CommandParser
 from api import MessageApiClient
-from event import MessageReceiveEvent, UrlVerificationEvent, EventManager
+from event import (
+    MessageReceiveEvent, 
+    UrlVerificationEvent, 
+    AlertManagerEvent,
+    EventManager
+)
 from flask import Flask, jsonify
 from dotenv import load_dotenv, find_dotenv
+from utils import parse_alertmanager_value_string, generate_alert_card
 
 # load env parameters form file named .env
 load_dotenv(find_dotenv())
@@ -21,6 +28,7 @@ APP_SECRET = os.getenv("APP_SECRET")
 VERIFICATION_TOKEN = os.getenv("VERIFICATION_TOKEN")
 ENCRYPT_KEY = os.getenv("ENCRYPT_KEY")
 LARK_HOST = os.getenv("LARK_HOST")
+ALERT_GROUP_NUMBER = os.getenv("ALERT_GROUP_NUMBER")
 
 # init service
 message_api_client = MessageApiClient(APP_ID, APP_SECRET, LARK_HOST)
@@ -64,6 +72,32 @@ def message_receive_event_handler(req_data: MessageReceiveEvent):
         pass
     else:
         logging.warning("message that has received bebore!")
+    return jsonify()
+
+
+@event_manager.register("alert_manager")
+def alert_manager_event_handler(req_data: AlertManagerEvent):
+    data = req_data.event
+    logging.warning(str(req_data.dict))
+    for alert in data.alerts:
+        status = alert.status
+        title = alert.labels.alertname
+        try:
+            rule_id = alert.labels.__alert_rule_uid__
+        except:
+            rule_id = None
+        fingerprint = alert.fingerprint
+        if '__value_string__' in dir(alert.annotations):
+            detail = parse_alertmanager_value_string(alert.annotations.__value_string__)
+        # detail = json.loads(alert.annotations.__value_string__)
+        message = generate_alert_card(status, title, detail, rule_id, fingerprint)
+        message_api_client.send(
+            'chat_id', 
+            ALERT_GROUP_NUMBER, 
+            'interactive',
+            message
+        )
+        # logging.warning(detail)
     return jsonify()
 
 

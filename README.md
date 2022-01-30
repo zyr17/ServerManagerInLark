@@ -26,6 +26,7 @@ expiration, `chage -M 1 account`.
   - `LARK_HOST`  above all is used to communicate with lark.
   - `AUTH_KEY_TAG` used to add after SSH keys to recognize whether an SSH key 
     is added by this program.
+  - `ALERT_GROUP_NUMBER` when alert triggers, where to send message.
 - `codes/ENV/available_accounts` one line an account name that can be binded.
 - `codes/ENV/available_servers` one line an server name. Note master server
   can SSH to all listed servers directly (double check when including self),

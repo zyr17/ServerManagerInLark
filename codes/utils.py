@@ -139,3 +139,26 @@ def generate_alert_card(status, title, detail, rule_id, fingerprint):
         + f'\nfingerprint: {fingerprint}'
     )
     return json.dumps(template)
+
+
+def list_all_servers():
+    """
+    list all server nickname and IP.
+    """
+    server_nickname = open('ENV/available_servers').read().strip().split('\n')
+    hosts = []
+    try:
+        hosts += open('/etc/hosts').read().strip().split('\n')
+    except:
+        pass
+    try:
+        hosts += open('/etc/host_hosts').read().strip().split('\n')
+    except:
+        pass
+    res = []
+    for nickname in server_nickname:
+        for host in hosts:
+            if nickname in host:
+                res.append(host.split())
+    logging.warning(res)
+    return res

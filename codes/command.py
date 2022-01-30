@@ -3,6 +3,8 @@ import inspect
 import logging
 from event import MessageReceiveEvent
 from flask import jsonify
+from ssh import get_nvidia_smi, get_my_monitor
+from utils import list_all_servers
 
 
 class Command:
@@ -143,6 +145,126 @@ class CheckAccount(Command):
         else:
             self._reply_text_msg(
                 f'Success! your user_id: {user_id}, binded account: {res}', 
+                cb_kwargs
+            )
+
+
+class ListAllServers(Command):
+    """
+    list server alias and IP
+    """
+    @staticmethod
+    def command_name():
+        return "ListAllServers"
+
+    def run(self, 
+            cmd_data: str, 
+            req_data: MessageReceiveEvent, 
+            cb_kwargs: dict):
+        try:
+            res = list_all_servers()
+            if len(res) == 0:
+                raise ValueError("empty result")
+        except Exception as e:
+            res = None
+            err_msg = str(e)
+        if res is None:
+            self._reply_text_msg(f'Error occured: {err_msg}', cb_kwargs)
+        else:
+            count = len(res)
+            res = '\n'.join([x[0] + '     ' + x[1] for x in res])
+            self._reply_text_msg(
+                f'Success! {count} servers.\n{res}',
+                cb_kwargs
+            )
+
+
+class Nvidia_SMI(Command):
+    """
+    run nvidia-smi in remote
+    """
+    @staticmethod
+    def command_name():
+        return "nvidia-smi"
+
+    def run(self, 
+            cmd_data: str, 
+            req_data: MessageReceiveEvent, 
+            cb_kwargs: dict):
+        # if not self._is_p2p(req_data):
+        #     return
+        if len(cmd_data) != 1:
+            self._reply_text_msg(
+                'Command "nvidia-smi" should contain exactly one argument.', 
+                cb_kwargs
+            )
+            return
+        res, err_msg = get_nvidia_smi(cmd_data[0])
+        if res is None:
+            self._reply_text_msg(f'Error occured: {err_msg}', cb_kwargs)
+        else:
+            self._reply_text_msg(
+                res,
+                cb_kwargs
+            )
+
+
+class My_Monitor(Command):
+    """
+    run my-monitor in remote
+    """
+    @staticmethod
+    def command_name():
+        return "my-monitor"
+
+    def run(self, 
+            cmd_data: str, 
+            req_data: MessageReceiveEvent, 
+            cb_kwargs: dict):
+        # if not self._is_p2p(req_data):
+        #     return
+        if len(cmd_data) != 1:
+            self._reply_text_msg(
+                'Command "my-monitor" should contain exactly one argument.', 
+                cb_kwargs
+            )
+            return
+        res, err_msg = get_my_monitor(cmd_data[0])
+        if res is None:
+            self._reply_text_msg(f'Error occured: {err_msg}', cb_kwargs)
+        else:
+            self._reply_text_msg(
+                res,
+                cb_kwargs
+            )
+
+
+class My_Monitor_All(Command):
+    """
+    run my-monitor-all in remote
+    """
+    @staticmethod
+    def command_name():
+        return "my-monitor-all"
+
+    def run(self, 
+            cmd_data: str, 
+            req_data: MessageReceiveEvent, 
+            cb_kwargs: dict):
+        # if not self._is_p2p(req_data):
+        #     return
+        if len(cmd_data) != 1:
+            self._reply_text_msg(
+                'Command "my-monitor" should contain exactly one argument.', 
+                cb_kwargs
+            )
+            return
+        res, err_msg = get_my_monitor(cmd_data[0], True)
+        if res is None:
+            self._reply_text_msg(f'Error occured: {err_msg}', cb_kwargs)
+        else:
+            self._reply_text_msg(
+                res,
                 cb_kwargs
             )
 

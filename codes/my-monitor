@@ -1,0 +1,237 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import re
+import time
+
+use_color = True
+
+def collect_gpu_data():
+    smi_data = os.popen('nvidia-smi').readlines()
+    gpu_data = []
+    gpu_pid = []
+    if 'failed' in smi_data[0] or 'Failed' in smi_data[0]:
+        print('[ERROR] NVIDIA-SMI failed to run')
+        return [], []
+
+    while '========' not in smi_data[0]:
+        smi_data = smi_data[1:]
+    while True:
+        line1 = smi_data[1]
+        line2 = smi_data[2]
+        if line1.strip() == '':
+            break
+        gid = int(line1[1:5].strip())
+        assert gid == len(gpu_data)
+        temp = int(line2[5:10].strip())
+        mem_use, mem_all = [x.strip() for x in line2.split('|')[2].split('/')]
+        utility = int(line2.split('|')[3].split('%')[0].strip())
+        gpu_data.append({
+            'temp': temp,
+            'mem_use': mem_use,
+            'mem_all': mem_all,
+            'utility': utility
+        })
+        gpu_pid.append([])
+        smi_data = smi_data[1:]
+        while '--------' not in smi_data[0]:
+            smi_data = smi_data[1:]
+    # TODO: SMI structure change in new version
+    GPUpos = -1
+    PIDpos = -1
+    Mempos = -1
+    while '======' not in smi_data[0]:
+        if '|' in smi_data[0]:
+            smi_data[0] = smi_data[0].split('|')[1]
+            if 'GPU  ' in smi_data[0]:
+                GPUpos = smi_data[0].index('GPU  ')
+            if 'PID' in smi_data[0]:
+                PIDpos = smi_data[0].index('PID') - 4
+            if 'GPU Memory' in smi_data[0]:
+                Mempos = smi_data[0].index('GPU Memory')
+        smi_data = smi_data[1:]
+    assert PIDpos >= 0 and Mempos >= 0
+    for line in smi_data[1:-1]:
+        if 'No running' in line:
+            continue
+        line = line.split('|')[1]
+        gid = int(line[GPUpos:GPUpos + 3].strip())
+        pid = int(line[PIDpos:PIDpos + 7].strip())
+        gmem = line[Mempos:].strip()
+        gpu_pid[gid].append([pid, gmem])
+    return gpu_data, gpu_pid
+
+def color(inp, com):
+    makecolor = False
+    if type(inp) == type(''):
+        assert inp.strip()[-1] == '%' and com.strip()[-1] == '%', inp + '|' + com
+        makecolor = float(inp.strip()[:-1]) > float(com.strip()[:-1])
+    else:
+        makecolor = inp > com
+    if type(inp) == type(1.0):
+        inp = '%.1f' % inp
+    if makecolor and use_color:
+        return "\033[7;31m%s\033[0m" % str(inp)
+    return str(inp)
+
+def bold(s):
+    if use_color:
+        return '\033[1m%s\033[0m' % s
+    return s
+
+def collect_cpu_data():
+    top_data = os.popen('top -b -w 512 -d 1 -n 2').readlines()
+    top_data = top_data[1:]
+    while top_data[0][:3] != 'top':
+        top_data = top_data[1:]
+    top_data = top_data[2:]
+    main = {}
+    threads = {}
+    cpu_pids = []
+    main['cpu'] = float([x for x in top_data[0].split(' ') if x != ''][1])
+    memline = [x.replace('+', '0') for x in re.findall(r'[\d\.]+\+?', top_data[1])]
+    main['mem_use'] = float(memline[2])
+    main['mem_all'] = float(memline[0])
+    main['mem_unit'] = top_data[1].split(' ')[0]
+    top_data = top_data[5:]
+    ps_data = os.popen('ps ax').readlines()[1:]
+    ps = {}
+    for line in ps_data:
+        line = [x for x in line.strip().split(' ') if x != '']
+        ps[int(line[0])] = ' '.join(line[4:])
+    for line in top_data:
+        line = [x for x in line.split(' ') if x != '']
+        pid = int(line[0])
+        cpu = float(line[8])
+        mem = float(line[9])
+        if pid in ps.keys():
+            cmd = ps[pid]
+        else:
+            cmd = ' '.join(line[11:])
+        user = line[1]
+        threads[pid] = {
+            'cpu': cpu,
+            'mem': mem,
+            'cmd': cmd,
+            'user': user
+        }
+        if cpu > 95 or mem > 2:
+            cpu_pids.append(pid)
+    return main, threads, cpu_pids
+
+UID_CACHE = {}
+def is_user_uid(username):
+    if username not in UID_CACHE:
+        UID_CACHE[username] = int(os.popen('id -u "' + username + '"').read())
+    return UID_CACHE[username] > 1000000000
+
+def list_gpu_info(gpu_data, gpu_pid, cpu_main, cpu_threads, cpu_pid,
+                  column = 0, row = 999):
+    try:
+        column = os.get_terminal_size().columns
+        row = os.get_terminal_size().lines - 1
+    except:
+        pass
+    if column < 51:
+        column = 51
+    show_all = ('-a' in sys.argv) * 10000 + 1
+    cputemp = []
+    try:
+        for line in os.popen('sensors').readlines():
+            if '+' in line:
+                try:
+                    cputemp.append(float(line[10:19]))
+                except Exception:
+                    pass
+        cputemp = sum(cputemp) / len(cputemp)
+    except Exception:
+        cputemp = 0
+    print('CPU usage: %s, CPU Temprature: %s'
+          % (color('%9s' % ('%.1f%%' % cpu_main['cpu']), '70%'),
+             color(cputemp, 70),
+    ))
+    print('Memory usage: %s, All memory: %s %s'
+          % (color('%6s' % ('%.1f%%' % (cpu_main['mem_use'] / cpu_main['mem_all'] * 100)), '85%'),
+             cpu_main['mem_all'],
+             cpu_main['mem_unit']
+    ))
+    row -= 3
+    for i in range(len(gpu_data)):
+        print('=' * column)
+        gd = gpu_data[i]
+        print('GPU %d, Temp:%s, Util:%s, Mem:%s, TotMem:%6s' 
+              % (i, 
+                 color('%3d%%' % gd['temp'], '78%').replace('%', ''), 
+                 color('%3d%%' % gd['utility'], '60%'),
+                 color('%4s' % ('%.0f%%' % (float(gd['mem_use'][:-3]) / float(gd['mem_all'][:-3]) * 100)), '85%'),
+                 gd['mem_all'][:-2]
+        ))
+        row -= 2
+        cleaned_pid = []
+        for pid in gpu_pid[i]:
+            if is_user_uid(cpu_threads[pid[0]]['user']):
+                cleaned_pid.append(pid)
+        if len(cleaned_pid) > 0:
+            print('-' * column)
+            print('%-8s%-8s%-7s%-6s%-8s%s' % ('PID', 'user', 'CPU', 'Mem', 'GPU-Mem', 'command'))
+            row -= 2
+        for pid, gmem in cleaned_pid:
+            data = cpu_threads[pid]
+            print('%-8d%-s%-7s%-6s%-8s%s'
+                  % (pid,
+                     bold('%-8s' % data['user']),
+                     color('%-7s' % (r'%.1f%%' % data['cpu']), '100%'),
+                     color('%-6s' % ('%.1f%%' % data['mem']), '10%'),
+                     gmem,
+                     data['cmd'][:column * show_all - 37]
+            ))
+            row -= 1
+    # CPU and MEM 
+    if row <= 1:
+        return
+    print('=' * column)
+    print('%-8s%-8s%-7s%-6s%s' % ('PID', 'user', 'CPU', 'Mem', 'command'))
+    row -= 2
+    for pid in cpu_pid:
+        if row == 0:
+            break
+        data = cpu_threads[pid]
+        # if not is_user_id(data['user']):
+        #    continue
+        print('%-8d%-8s%s%s%s'
+              % (pid,
+                 bold('%-8s' % data['user']),
+                 color('%-7s' % (r'%.1f%%' % data['cpu']), '100%'),
+                 color('%-6s' % ('%.1f%%' % data['mem']), '10%'),
+                 data['cmd'][:column * show_all - 29]
+        ))
+        row -= 1
+
+if __name__ == '__main__':
+    interval = 5
+    single_time = False
+    column = 0
+    for arg in sys.argv:
+        if re.match('-t\d+', arg):
+            interval = int(arg[2:])
+        if arg == '-1':
+            single_time = True
+            use_color = False
+            column = 79
+    try:
+        if not single_time:
+            os.system('clear')
+            print('loading information...')
+        while True:
+            start_time = time.time()
+            cpu_data = collect_cpu_data()
+            os.system('clear')
+            gpu_data = collect_gpu_data()
+            list_gpu_info(*gpu_data, *cpu_data, column)
+            end_time = time.time()
+            if single_time:
+                break
+            time.sleep(max(0, interval - (end_time - start_time)))
+    except KeyboardInterrupt:
+        pass

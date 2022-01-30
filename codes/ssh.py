@@ -115,3 +115,36 @@ def change_all_auth_keys(user, auth_keys, pool = 5):
     pool.join()
     if len(errors):
         return errors
+
+
+def get_nvidia_smi(server):
+    """
+    remote nvidia-smi. if success, return [response, None], 
+    else [None, error_dict]
+    """
+    if server not in available_servers:
+        return None, { 'stdout': None, 'stderr': 'unrecognized server name' }
+    retcode, out, err = exec_cmd(f'ssh {server} "nvidia-smi"')
+    if retcode != 0:
+        return None, {'stdout': out, 'stderr': err}
+    return out, None
+
+
+def get_my_monitor(server, all = False):
+    """
+    Like nvidia-smi, but scp my-monitor to target server and run. all means 
+    show full length command.
+    """
+    if server not in available_servers:
+        return None, { 'stdout': None, 'stderr': 'unrecognized server name' }
+    retcode, out, err = exec_cmd(
+        f'scp {os.path.dirname(os.path.abspath(__file__))}/my-monitor '
+        f'{server}:/tmp/my-monitor'
+    )
+    if retcode != 0:
+        return None, {'stdout': out, 'stderr': err}
+    all = '-a' if all else ''
+    retcode, out, err = exec_cmd(f'ssh {server} "/tmp/my-monitor -1 {all}"')
+    if retcode != 0:
+        return None, {'stdout': out, 'stderr': err}
+    return out, None

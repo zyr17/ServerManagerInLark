@@ -106,6 +106,8 @@ def alert_manager_event_handler(req_data: AlertManagerEvent):
         fingerprint = alert.fingerprint
         if '__value_string__' in dir(alert.annotations):
             detail = parse_alertmanager_value_string(alert.annotations.__value_string__)
+        else:
+            detail = []
         # detail = json.loads(alert.annotations.__value_string__)
         message = generate_alert_card(status, title, detail, rule_id, fingerprint)
         message_api_client.send(

@@ -50,7 +50,7 @@ command_parser = CommandParser(
 scheduler = APScheduler()
 scheduler.init_app(app)
 
-@scheduler.task('cron', id = 'lock_all_password_scheduler', hour = 0)
+@scheduler.task('cron', id = 'lock_all_password_scheduler', hour = 4)
 def lock_all_password_scheduler():
     res = lock_all_password()
     if res is not None:

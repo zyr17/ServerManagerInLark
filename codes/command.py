@@ -3,7 +3,7 @@ import inspect
 import logging
 from event import MessageReceiveEvent
 from flask import jsonify
-from ssh import get_nvidia_smi, get_my_monitor
+from ssh import get_nvidia_smi, get_my_monitor, lock_all_password
 from utils import list_all_servers
 
 
@@ -527,7 +527,7 @@ class DeleteKey(Command):
 
 class ClearMessageID(Command):
     """
-    get all keys in db
+    clear message id in db
     """
     @staticmethod
     def command_name():
@@ -548,6 +548,33 @@ class ClearMessageID(Command):
         else:
             self._reply_text_msg(
                 f'Clear message_id success! {len(res)} keys: {" ".join(res)}',
+                cb_kwargs
+            )
+
+
+class LockPassword(Command):
+    """
+    lock account password now
+    """
+    @staticmethod
+    def command_name():
+        return "LockPassword"
+
+    def run(self, 
+            cmd_data: str, 
+            req_data: MessageReceiveEvent, 
+            cb_kwargs: dict):
+        if self._private_chat_command_notify(req_data, cb_kwargs):
+            return
+        user_id = self._get_user_id(req_data)
+        if self._not_admin_notify(user_id, cb_kwargs):
+            return
+        res = lock_all_password()
+        if res is not None:
+            self._reply_text_msg(f'Error occured: {res}', cb_kwargs)
+        else:
+            self._reply_text_msg(
+                f'Lock password success!',
                 cb_kwargs
             )
 

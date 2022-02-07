@@ -14,8 +14,10 @@ from event import (
     EventManager
 )
 from flask import Flask, jsonify
+from flask_apscheduler import APScheduler
 from dotenv import load_dotenv, find_dotenv
 from utils import parse_alertmanager_value_string, generate_alert_card
+from ssh import lock_all_password
 
 # load env parameters form file named .env
 load_dotenv(find_dotenv())
@@ -29,6 +31,7 @@ VERIFICATION_TOKEN = os.getenv("VERIFICATION_TOKEN")
 ENCRYPT_KEY = os.getenv("ENCRYPT_KEY")
 LARK_HOST = os.getenv("LARK_HOST")
 ALERT_GROUP_NUMBER = os.getenv("ALERT_GROUP_NUMBER")
+# LOCK_PASSWORD_INTERVAL = os.getenv("LOCK_PASSWORD_INTERVAL")
 
 # init service
 message_api_client = MessageApiClient(APP_ID, APP_SECRET, LARK_HOST)
@@ -40,6 +43,20 @@ command_parser = CommandParser(
     check_user_is_admin = message_api_client.check_user_is_admin,
     database = database
 )
+
+
+# init scheduler
+# scheduler = sched.scheduler(time.time, time.sleep)
+scheduler = APScheduler()
+scheduler.init_app(app)
+
+@scheduler.task('cron', id = 'lock_all_password_scheduler', hour = 0)
+def lock_all_password_scheduler():
+    res = lock_all_password()
+    if res is not None:
+        logging.warning(f'error in lock_all_password: {res}')
+
+scheduler.start()
 
 
 @event_manager.register("url_verification")

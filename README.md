@@ -4,6 +4,9 @@ A robot in Lark to support password and SSH key management.
 
 Use Docker to deploy, Redis to store data.
 
+WARNING: After start, robot will lock all account password peridically at 4A.M.
+Check `codes/server.py:lock_all_password_scheduler` for detail.
+
 ## Prepare
 
 Deploy on root of master server, and master server can ssh to root of slave 
@@ -12,8 +15,6 @@ modify `~/.ssh/config` to add port information. Finally, root of master
 server can `ssh SLAVE1` to all slave servers.
 
 To use temporary password only, you should:
-- Configure all controlled accounts in slave servers to have one day password
-expiration, `chage -M 1 account`.
 - Set permissions of `/usr/bin/passwd /usr/sbin/chpasswd` as 700.
 
 ## Environments

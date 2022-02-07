@@ -29,6 +29,15 @@ def change_password_w(args):
     return change_password(*args)
 
 
+def lock_password(server):
+    users = open('ENV/available_accounts').read().strip().split('\n')
+    cmd = f"""ssh {server} " """
+    for user in users:
+        cmd += f""" passwd -l {user}; """
+    cmd += f""" " """
+    return exec_cmd(cmd)
+
+
 def get_auth_keys(server, user):
     cmd = (
         f""" ssh {server} " """
@@ -68,7 +77,29 @@ def change_all_password(user, password, pool = 5):
     errors = {}
     for server, [retcode, res_out, res_err] \
             in zip(available_servers, pool.imap(change_password_w, args)):
-        logging.warning(str((retcode, res_out, res_err)))
+        # logging.warning(str((retcode, res_out, res_err)))
+        if retcode != 0:
+            errors[server] = {'stdout': res_out, 'stderr': res_err}
+    pool.close()
+    pool.join()
+    if len(errors):
+        return errors
+
+
+def lock_all_password(pool = 5):
+    """
+    lock all password in servers, pool parallel number with multiprocessing.
+    expected to run daily.
+
+    return: if all success, none. else, a dict: 
+        {error_server_name: { stdout: xxx, stderr: yyy } }
+    """
+    pool = Pool(pool)
+    errors = {}
+    for server, [retcode, res_out, res_err] \
+            in zip(available_servers, pool.imap(lock_password, 
+                                                available_servers)):
+        # logging.warning(str((retcode, res_out, res_err)))
         if retcode != 0:
             errors[server] = {'stdout': res_out, 'stderr': res_err}
     pool.close()

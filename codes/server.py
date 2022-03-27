@@ -13,7 +13,7 @@ from event import (
     AlertManagerEvent,
     EventManager
 )
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_apscheduler import APScheduler
 from dotenv import load_dotenv, find_dotenv
 from utils import parse_alertmanager_value_string, generate_alert_card
@@ -44,6 +44,11 @@ command_parser = CommandParser(
     database = database
 )
 
+def shutdown():
+    shutdown_func = request.environ.get('werkzeug.server.shutdown')
+    if shutdown_func is None:
+        raise RuntimeError('Not running werkzeug')
+    shutdown_func()
 
 # init scheduler
 # scheduler = sched.scheduler(time.time, time.sleep)
@@ -55,6 +60,11 @@ def lock_all_password_scheduler():
     res = lock_all_password()
     if res is not None:
         logging.warning(f'error in lock_all_password: {res}')
+
+@scheduler.task('interval', id = 'daily_shutdown_scheduler', days = 1)
+def daily_shutdown_scheduler():
+    import requests
+    requests.get('http://localhost:29980/shutdown_the_server')
 
 scheduler.start()
 
@@ -137,6 +147,16 @@ def callback_event_handler():
 
     return event_handler(event)
 
+
+@app.route("/shutdown_the_server", methods=["GET"])
+def shutdown():
+    shutdown_func = request.environ.get('werkzeug.server.shutdown')
+    if shutdown_func is None:
+        raise RuntimeError('Not running werkzeug')
+    logging.error('try shutdown')
+    shutdown_func()
+    logging.error('shutdown over?')
+    return jsonify("shutdown")
 
 if __name__ == "__main__":
     # init()

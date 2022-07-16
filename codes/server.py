@@ -63,8 +63,9 @@ def lock_all_password_scheduler():
 
 @scheduler.task('interval', id = 'daily_shutdown_scheduler', days = 1)
 def daily_shutdown_scheduler():
-    import requests
-    requests.get('http://localhost:29980/shutdown_the_server')
+    # import requests
+    # requests.get('http://localhost:29980/shutdown_the_server')
+    os.system('pkill -2 python')
 
 scheduler.start()
 

@@ -169,7 +169,7 @@ def get_my_monitor(server, all = False):
     if server not in available_servers:
         return None, { 'stdout': None, 'stderr': 'unrecognized server name' }
     retcode, out, err = exec_cmd(
-        f'scp {os.path.dirname(os.path.abspath(__file__))}/my-monitor '
+        f'scp {os.path.dirname(os.path.abspath(__file__))}/bash-scripts/my-monitor '
         f'{server}:/tmp/my-monitor'
     )
     if retcode != 0:

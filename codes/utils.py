@@ -5,6 +5,7 @@ import base64
 import logging
 import secrets
 import json
+import logging
 
 
 class Obj(dict):
@@ -162,3 +163,24 @@ def list_all_servers():
                 res.append(host.split())
     logging.warning(res)
     return res
+
+
+def update_hosts():
+    """
+    update /etc/host_hosts into /etc/hosts
+    """
+    hosts = []
+    try:
+        hosts += open('/etc/hosts').read().strip().split('\n')
+    except:
+        pass
+    try:
+        hosts += open('/etc/host_hosts').read().strip().split('\n')
+    except:
+        pass
+
+    hosts = list(set(hosts))
+    hosts.sort()
+    hosts_str = '\n'.join(hosts)
+    logging.info(f"Host updated: \n{hosts_str}")
+    open('/etc/hosts', 'w').write('\n'.join(hosts))

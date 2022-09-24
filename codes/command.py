@@ -602,8 +602,10 @@ class CommandParser(Command):
                 self._cmd_classes.append(i)
         # save all commands. key is command name, value is commad func.
         self.commands = {}
+        self.help_string = "existing commands:\n"
         for i in self._cmd_classes:
             self.commands[i.command_name().lower()] = i(*argv, **kwargs)
+            self.help_string = self.help_string + i.command_name() + '\n'
         logging.warn(f'exist commands: {list(self.commands.keys())}')
 
     def run(self, 
@@ -631,6 +633,7 @@ class CommandParser(Command):
         if command in self.commands.keys():
             self.commands[command].run(data, req_data, cb_kwargs)
         else:
+            self._reply_text_msg(self.help_string, cb_kwargs)
             logging.warning(f"not a command: {command}")
 
     def parse(self, req_data: MessageReceiveEvent, cb_kwargs: dict):

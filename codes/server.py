@@ -16,7 +16,11 @@ from event import (
 from flask import Flask, jsonify, request
 from flask_apscheduler import APScheduler
 from dotenv import load_dotenv, find_dotenv
-from utils import parse_alertmanager_value_string, generate_alert_card
+from utils import (
+    parse_alertmanager_value_string, 
+    generate_alert_card,
+    update_hosts
+)
 from ssh import lock_all_password
 
 # load env parameters form file named .env
@@ -161,4 +165,5 @@ def shutdown():
 
 if __name__ == "__main__":
     # init()
+    update_hosts()
     app.run(host="0.0.0.0", port=29980, debug=True)

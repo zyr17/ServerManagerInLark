@@ -114,23 +114,24 @@ def change_auth_keys(server, user, auth_keys):
     will get current auth_keys, remove keys with auth_tag, and add new 
     auth_keys with auth_tag.
 
-    return: if success, none. else, a dict: { stdout: xxx, stderr: yyy }
+    return: if success, 0, none, none. else, 1, stdout, stderr
     """
     auth_tag = os.getenv('AUTH_KEY_TAG')
     retcode, out, err = get_auth_keys(server, user)
     if retcode != 0:
-        return {'stdout': out, 'stderr': err}
+        return retcode, out, err
     current_keys = [x for x in out.strip().split('\n') if auth_tag not in x]
     for key in auth_keys:
         current_keys.append(f'{key} {auth_tag}')
     retcode, out, err = set_auth_keys(server, user, ':'.join(current_keys))
     if retcode != 0:
-        return {'stdout': out, 'stderr': err}
+        return retcode, out, err
     return 0, None, None
 
 
 def change_auth_keys_w(args):
     return change_auth_keys(*args)
+
 
 def change_all_auth_keys(user, auth_keys, pool = 5):
     pool = Pool(pool)

@@ -161,7 +161,7 @@ def list_all_servers():
         for host in hosts:
             if nickname in host:
                 res.append(host.split())
-    logging.warning(res)
+    logging.warning(f'servers: {res}')
     return res
 
 
@@ -182,5 +182,5 @@ def update_hosts():
     hosts = list(set(hosts))
     hosts.sort()
     hosts_str = '\n'.join(hosts)
-    logging.info(f"Host updated: \n{hosts_str}")
+    logging.warning(f"Host updated: \n{hosts_str}")
     open('/etc/hosts', 'w').write('\n'.join(hosts))

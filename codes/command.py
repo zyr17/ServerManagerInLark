@@ -606,7 +606,7 @@ class CommandParser(Command):
         for i in self._cmd_classes:
             self.commands[i.command_name().lower()] = i(*argv, **kwargs)
             self.help_string = self.help_string + i.command_name() + '\n'
-        logging.warn(f'exist commands: {list(self.commands.keys())}')
+        logging.warning(f'exist commands: {list(self.commands.keys())}')
 
     def run(self, 
             cmd_data: str, 
@@ -620,11 +620,13 @@ class CommandParser(Command):
             'in CommandParser, cmd_data should remain "" or None'
         message = req_data.event.message
         if message.message_type != "text":
-            logging.warning("can only process plain text, "
-                            f"but got {message.message_type}.")
+            resp = ("can only process plain text, "
+                    f"but got {message.message_type}.")
+            logging.warning(resp)
+            self._reply_text_msg(resp, cb_kwargs)
             return
         text_content = json.loads(message.content)['text'].strip()
-        logging.warning(text_content)
+        logging.warning(f'input: {text_content}')
         # chat_type = message.chat_type  # p2p or group
         # user_id = req_data.event.sender.sender_id.user_id
         text_content = text_content.split(' ')
@@ -633,8 +635,9 @@ class CommandParser(Command):
         if command in self.commands.keys():
             self.commands[command].run(data, req_data, cb_kwargs)
         else:
-            self._reply_text_msg(self.help_string, cb_kwargs)
-            logging.warning(f"not a command: {command}")
+            if self._is_p2p(req_data):
+                self._reply_text_msg(self.help_string, cb_kwargs)
+                logging.warning(f"not a command: {command}")
 
     def parse(self, req_data: MessageReceiveEvent, cb_kwargs: dict):
         """

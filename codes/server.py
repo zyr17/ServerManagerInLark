@@ -110,7 +110,7 @@ def message_receive_event_handler(req_data: MessageReceiveEvent):
 @event_manager.register("alert_manager")
 def alert_manager_event_handler(req_data: AlertManagerEvent):
     data = req_data.event
-    logging.warning(str(req_data.dict))
+    logging.warning(f'alertmanager: {req_data.dict}')
     for alert in data.alerts:
         status = alert.status
         title = alert.labels.alertname

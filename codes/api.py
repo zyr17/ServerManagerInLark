@@ -80,7 +80,7 @@ class MessageApiClient(object):
         response = requests.post(url, req_body)
         MessageApiClient._check_error_response(response)
         self._tenant_access_token = response.json().get("tenant_access_token")
-        logging.warning(self._tenant_access_token)
+        logging.warning(f't_access_token {self._tenant_access_token}')
 
     def check_user_is_admin(self, user_id):
         if user_id not in self._admin_cache:

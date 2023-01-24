@@ -180,3 +180,17 @@ def get_my_monitor(server, all = False):
     if retcode != 0:
         return None, {'stdout': out, 'stderr': err}
     return out, None
+
+
+def clear_cache(server):
+    """
+    remote clear cache. if success, return [True, None], 
+    else [None, error_dict]
+    """
+    if server not in available_servers:
+        return None, { 'stdout': None, 'stderr': 'unrecognized server name' }
+    retcode, out, err = exec_cmd(f'ssh {server} "echo 3 > /proc/sys/vm/drop_caches"')
+    if retcode != 0:
+        return None, {'stdout': out, 'stderr': err}
+    return True, None
+

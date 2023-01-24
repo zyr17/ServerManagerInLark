@@ -3,8 +3,9 @@ import inspect
 import logging
 from event import MessageReceiveEvent
 from flask import jsonify
-from ssh import get_nvidia_smi, get_my_monitor, lock_all_password
+from ssh import get_nvidia_smi, get_my_monitor, lock_all_password, clear_cache
 from utils import list_all_servers
+from typing import List
 
 
 class Command:
@@ -81,7 +82,7 @@ class Command:
         self.api_cb(**cb_kwargs)
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         """
@@ -104,7 +105,7 @@ class BindAccount(Command):
         return "BindAccount"
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         # if not self._is_p2p(req_data):
@@ -135,7 +136,7 @@ class CheckAccount(Command):
         return "CheckAccount"
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         user_id = self._get_user_id(req_data)
@@ -158,7 +159,7 @@ class ListAllServers(Command):
         return "ListAllServers"
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         try:
@@ -188,7 +189,7 @@ class Nvidia_SMI(Command):
         return "nvidia-smi"
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         # if not self._is_p2p(req_data):
@@ -218,7 +219,7 @@ class My_Monitor(Command):
         return "my-monitor"
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         # if not self._is_p2p(req_data):
@@ -248,7 +249,7 @@ class My_Monitor_All(Command):
         return "my-monitor-all"
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         # if not self._is_p2p(req_data):
@@ -278,7 +279,7 @@ class GenerateNewPassword(Command):
         return "GenerateNewPassword"
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         if self._private_chat_command_notify(req_data, cb_kwargs):
@@ -309,7 +310,7 @@ class AddNewPublicKey(Command):
         return "AddNewPublicKey"
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         if self._private_chat_command_notify(req_data, cb_kwargs):
@@ -344,7 +345,7 @@ class CheckAndUpdatePublicKey(Command):
         return "CheckAndUpdatePublicKey"
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         if self._private_chat_command_notify(req_data, cb_kwargs):
@@ -373,7 +374,7 @@ class ClearUserData(Command):
         return "ClearUserData"
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         if self._private_chat_command_notify(req_data, cb_kwargs):
@@ -407,7 +408,7 @@ class GetAllKeys(Command):
         return "GetAllKeys"
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         if self._private_chat_command_notify(req_data, cb_kwargs):
@@ -435,7 +436,7 @@ class GetKeyValue(Command):
         return "GetKeyValue"
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         if self._private_chat_command_notify(req_data, cb_kwargs):
@@ -468,7 +469,7 @@ class SetKeyValue(Command):
         return "SetKeyValue"
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         if self._private_chat_command_notify(req_data, cb_kwargs):
@@ -501,7 +502,7 @@ class DeleteKey(Command):
         return "DeleteKey"
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         if self._private_chat_command_notify(req_data, cb_kwargs):
@@ -534,7 +535,7 @@ class ClearMessageID(Command):
         return "ClearMessageID"
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         if self._private_chat_command_notify(req_data, cb_kwargs):
@@ -561,7 +562,7 @@ class LockPassword(Command):
         return "LockPassword"
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         if self._private_chat_command_notify(req_data, cb_kwargs):
@@ -575,6 +576,35 @@ class LockPassword(Command):
         else:
             self._reply_text_msg(
                 f'Lock password success!',
+                cb_kwargs
+            )
+
+
+class ClearCache(Command):
+    """
+    clear cache of one server
+    """
+    @staticmethod
+    def command_name():
+        return "ClearCache"
+
+    def run(self, 
+            cmd_data: List[str], 
+            req_data: MessageReceiveEvent, 
+            cb_kwargs: dict):
+        user_id = self._get_user_id(req_data)
+        if len(cmd_data) != 1:
+            self._reply_text_msg(
+                'Command "ClearCache" should take server name as input', 
+                cb_kwargs
+            )
+            return
+        res, err_msg = clear_cache(cmd_data[0])
+        if err_msg is not None:
+            self._reply_text_msg(f'Error occured: {res}', cb_kwargs)
+        else:
+            self._reply_text_msg(
+                f'Clear cache of {cmd_data[0]} success!',
                 cb_kwargs
             )
 
@@ -609,7 +639,7 @@ class CommandParser(Command):
         logging.warning(f'exist commands: {list(self.commands.keys())}')
 
     def run(self, 
-            cmd_data: str, 
+            cmd_data: List[str], 
             req_data: MessageReceiveEvent, 
             cb_kwargs: dict):
         """

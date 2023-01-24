@@ -161,6 +161,7 @@ def list_all_servers():
         for host in hosts:
             if nickname in host:
                 res.append(host.split())
+                break
     logging.warning(f'servers: {res}')
     return res
 

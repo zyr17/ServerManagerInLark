@@ -37,10 +37,10 @@ services:
       - "29980:29980"
   
   redis:
-    image: redis:latest
+    image: redis:7.0.7
     restart: unless-stopped
     volumes:
       - ./redis:/redis
     # ports:
     #   - "29980:29980"
-    command: "redis-server /redis/redis.conf"
+    command: "sysctl vm.overcommit_memory=1 && redis-server /redis/redis.conf"

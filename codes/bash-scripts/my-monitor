@@ -227,7 +227,10 @@ def collect_cpu_data():
     main = {}
     threads = {}
     cpu_pids = []
-    main['cpu'] = float(re.search(r'([0-9.]+) *us', top_data[0]).group(1))
+    main['cpu'] = (
+        float(re.search(r'([0-9.]+) *us', top_data[0]).group(1))
+        + float(re.search(r'([0-9.]+) *sy', top_data[0]).group(1))
+    )
     memline = [x.replace('+', '0') for x in re.findall(r'[\d\.]+\+?', top_data[1])]
     main['mem_use'] = float(memline[2])
     main['mem_all'] = float(memline[0])

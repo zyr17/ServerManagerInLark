@@ -270,6 +270,40 @@ class My_Monitor_All(Command):
             )
 
 
+class GenerateNewAdminPassword(Command):
+    """
+    generate new admin password
+    """
+    @staticmethod
+    def command_name():
+        return "GenerateNewAdminPassword"
+
+    def run(self, 
+            cmd_data: List[str], 
+            req_data: MessageReceiveEvent, 
+            cb_kwargs: dict):
+        user_id = self._get_user_id(req_data)
+        if self._not_admin_notify(user_id, cb_kwargs):
+            return
+        if self._private_chat_command_notify(req_data, cb_kwargs):
+            return
+        user_id = self._get_user_id(req_data)
+        res, err_msg = self.db.account_name_to_password('mdm')
+        if res is None:
+            self._reply_text_msg(f'Error occured: {err_msg}', cb_kwargs)
+        else:
+            self._reply_text_msg(
+                'Generate new admin password success!\n-----\n'
+                f'New Password: \n{res}\n-----\n'
+                'Please note the password will expire in the next day, '
+                'you should generate new password after then. '
+                'To use servers more convenient, we highly recommend '
+                'using SSH keys as main login method. See '
+                'Command "AddNewPublicKey" in doc for details.',
+                cb_kwargs
+            )
+
+
 class GenerateNewPassword(Command):
     """
     generate new password for account

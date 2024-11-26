@@ -10,6 +10,7 @@ load_dotenv(find_dotenv())
 
 
 available_servers = open('ENV/available_servers').read().strip().split('\n')
+master_server = open('ENV/master_server').read().strip()
 
 
 def exec_cmd(cmd):
@@ -31,6 +32,7 @@ def change_password_w(args):
 
 def lock_password(server):
     users = open('ENV/available_accounts').read().strip().split('\n')
+    users = users + ['mdm']
     cmd = f"""ssh {server} " """
     for user in users:
         cmd += f""" passwd -l {user}; """
@@ -72,11 +74,15 @@ def change_all_password(user, password, pool = 5):
     """
     pool = Pool(pool)
     args = []
-    for i in available_servers:
+    servers = available_servers[:]
+    if user == 'mdm':
+        # if set mdm password, then include self
+        servers = servers + [master_server]
+    for i in servers:
         args.append([i, user, password])
     errors = {}
     for server, [retcode, res_out, res_err] \
-            in zip(available_servers, pool.imap(change_password_w, args)):
+            in zip(servers, pool.imap(change_password_w, args)):
         # logging.warning(str((retcode, res_out, res_err)))
         if retcode != 0:
             errors[server] = {'stdout': res_out, 'stderr': res_err}
@@ -96,9 +102,9 @@ def lock_all_password(pool = 5):
     """
     pool = Pool(pool)
     errors = {}
+    servers = available_servers + [master_server]
     for server, [retcode, res_out, res_err] \
-            in zip(available_servers, pool.imap(lock_password, 
-                                                available_servers)):
+            in zip(servers, pool.imap(lock_password, servers)):
         # logging.warning(str((retcode, res_out, res_err)))
         if retcode != 0:
             errors[server] = {'stdout': res_out, 'stderr': res_err}

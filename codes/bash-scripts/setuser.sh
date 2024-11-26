@@ -3,6 +3,11 @@
 user=USER
 id=ID
 
+if [[ ${#id} -ne 10 ]]; then
+    echo ID length error! $user, $id
+    exit
+fi
+
 if [[ -n `cat /etc/passwd | grep ^$user` ]]; then
     echo user exists.
     exit 1

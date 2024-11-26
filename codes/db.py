@@ -178,7 +178,7 @@ class RedisConnect:
         return: if get or successfully set, return (password, None)
             if got error, return (None, Error message)
         """
-        key = self._account_passwd_key(account_name)
+        # key = self._account_passwd_key(account_name)
         if password is not None:
             return None, 'unable to set password, can only get random password'
         new_passwd = generate_password()
